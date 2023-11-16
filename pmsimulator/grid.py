@@ -100,7 +100,7 @@ class Grid:
         Method to plot the current grid density as a heatmap.
         Note that the only kwargs that will get noticed are:
         -cmap for the heatmap
-        -c, maker, s, and alpha for the scatter
+        -c, marker, s, and alpha for the scatter
     
         Parameters:
         particles - particles to overlay on the heatmap. Can be a list. Default is None.
