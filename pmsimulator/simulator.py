@@ -121,12 +121,6 @@ class ParticleArray:
         elif distribution == 'allones':
             self.initialize_all_ones(**kwargs)
 
-from .particles import *
-from .simulator import *
-
-import numpy as np
-import matplotlib.pyplot as plt
-
 class Grid:
 
     DENSITY_METHODS = ['tsc', 'cic', 'ngp']
