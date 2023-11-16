@@ -1,3 +1,5 @@
+import numpy as np
+
 class Particles:
     
     def __init__(self, num_particles, species_name=None):
