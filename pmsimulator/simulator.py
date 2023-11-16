@@ -1,34 +1,40 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-SIMULATION_PARAMETERS = {
-    'DOMAIN_SIZE': 1.0,
-    'GRID_SIZE': 0.1,
-    'TIME_STEPS': 0 # How many time steps has the simulator evolved through
-}
-
-PARTICLE_SPECIES = {
-    'N': 0, # The total number of particle species in the simulator
-    'PARTICLES_PER_SPECIES': [], # How many particles are in each species
-    'SPECIES_LIST': [], # Pointers to the Particle objects
-}
+class SimulationSettings:
+    def __init__(self, domain_size=1.0, grid_size=0.01, dt=dt):
+        self.domain_size = domain_size
+        self.grid_size = grid_size
+        self.dt = dt # Time resolution of the simulation
 
 class PMSimulator:
-    def __init__(self):
-        
-        self.grid = Grid(SIMULATION_PARAMETERS['DOMAIN_SIZE'], SIMULATION_PARAMETERS['GRID_SIZE']) # Create the simulation grid
+    def __init__(self, **kwargs):
+        '''
+        Instatiate a simulator object
+        **kwarg - optional keyword arguments for the simulation_settings attribute
+        '''
 
-    def create_particles(self, num_particles, species_name=None):
-        particles_instance = Particles(num_particles)
+        self.simulation_settings = SimulationSettings(**kwargs)
+
+        # Keep track of simulation properties
+        self.time_steps = 0 # Counter for how many time steps the simulator has evolved through
+        self.n_species = 0 # The total number of particle species in the simulator
+        self.particles_per_species = []
+        self.species_list = []
+        
+        self.grid = Grid(self.simulation_settings) # Create the simulation grid
+
+    def create_particles(self, num_particles, self.simulation_settings, species_name=None):
+        particles_instance = Particles(num_particles, self.simulation_settings)
         if species_name is None:
             # Assign generic attribute name if none is passed by user
             species_name = f'particles_{len([attr for attr in self.__dict__ if "particles_" in attr])}'
             
         setattr(self, species_name, particles_instance)
         
-        PARTICLE_SPECIES['N'] += 1
-        PARTICLE_SPECIES['PARTICLES_PER_SPECIES'].append(num_particles)
-        PARTICLE_SPECIES['SPECIES_LIST'].append(getattr(self, species_name))
+        self.n_species += 1
+        self.particles_per_species.append(num_particles)
+        self.species_list.append(getattr(self, species_name))
 
     def reset_all(self):
         '''
@@ -50,7 +56,7 @@ class PMSimulator:
 
 class Particles:
     
-    def __init__(self, num_particles, species_name=None):
+    def __init__(self, num_particles, simulation_settings, species_name=None):
         
         if not isinstance(num_particles, int):
             raise TypeError("num_particles must be an integer.")
@@ -62,12 +68,14 @@ class Particles:
         self.y_velocities = ParticleArray(num_particles)
         self.masses = ParticleArray(num_particles)
 
+        self.domain_size = simulation_settings.domain_size
+
     def apply_periodic_bc(self):
         '''
         Apply periodic boundary conditions for positions arrays
         '''
-        self.x_positions.data = self.x_positions.data % SIMULATION_PARAMETERS['DOMAIN_SIZE']
-        self.y_positions.data = self.y_positions.data % SIMULATION_PARAMETERS['DOMAIN_SIZE']
+        self.x_positions.data = self.x_positions.data % self.domain_size
+        self.y_positions.data = self.y_positions.data % self.domain_size
 
     def kinetic_energy(self):
         '''
@@ -125,14 +133,15 @@ class Grid:
 
     DENSITY_METHODS = ['tsc', 'cic', 'ngp']
     
-    def __init__(self, domain_size, grid_size):
+    def __init__(self, simulation_settings):
+        self.simulation_settings = simulation_settings
         
         # Number of grid cells along each axis
-        self.grid_cells_x = int(domain_size / grid_size)
-        self.grid_cells_y = int(domain_size / grid_size)
+        self.grid_cells_x = int(simulation_settings.domain_size / simulation_settings.grid_size)
+        self.grid_cells_y = int(simulation_settings.domain_size / simulation_settings.grid_size)
 
         # Initialize the density field to zero
-        self.denisty_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
+        self.density_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
 
     def assign_density(self, particle_populations, method='tsc'):
         '''
@@ -178,8 +187,8 @@ class Grid:
         None
         '''
         # Convert particle positions to grid indices
-        grid_x = int(x / SIMULATION_PARAMETERS['GRID_SIZE'])
-        grid_y = int(y / SIMULATION_PARAMETERS['GRID_SIZE'])
+        grid_x = int(x / self.simulation_settings.grid_size)
+        grid_y = int(y / self.simulation_settings.grid_size)
         
         # Loop over the 3x3 grid around the particle's grid cell
         for i in range(grid_x - 1, grid_x + 2):
@@ -189,16 +198,16 @@ class Grid:
                 j_periodic = j % self.grid_cells_y
 
                 # Distance between particle and grid cell center
-                dx = (i_periodic + 0.5) * SIMULATION_PARAMETERS['GRID_SIZE'] - x
-                dy = (j_periodic + 0.5) * SIMULATION_PARAMETERS['GRID_SIZE'] - y
+                dx = (i_periodic + 0.5) * self.simulation_settings.grid_size - x
+                dy = (j_periodic + 0.5) * self.simulation_settings.grid_size - y
                     
                 # TSC weights along x and y directions
-                weight_x = max(1 - abs(2 * dx / SIMULATION_PARAMETERS['GRID_SIZE']), 0)
-                weight_y = max(1 - abs(2 * dy / SIMULATION_PARAMETERS['GRID_SIZE']), 0)
+                weight_x = max(1 - abs(2 * dx / self.simulation_settings.grid_size), 0)
+                weight_y = max(1 - abs(2 * dy / self.simulation_settings.grid_size), 0)
 
                 weight = weight_x * weight_y
 
-                self.denisty_field[j_periodic, i_periodic] += mass * weight
+                self.density_field[j_periodic, i_periodic] += mass * weight
 
     def assign_density_cic(self, grid_x, grid_y, x, y, mass):
         '''
@@ -234,7 +243,7 @@ class Grid:
         heatmap_kwargs = {
             'cmap': kwargs.get('cmap', 'viridis'),
             'origin': 'lower',
-            'extent': [0, SIMULATION_PARAMETERS['DOMAIN_SIZE'], 0, SIMULATION_PARAMETERS['DOMAIN_SIZE']]
+            'extent': [0, self.simulation_settings.domain_size, 0, self.simulation_settings.domain_size]
         }
         heatmap = plt.imshow(self.denisty_field, **heatmap_kwargs)
     
@@ -262,7 +271,7 @@ class Grid:
         plt.title('Grid Density Heatmap')
         plt.xlabel('X Position')
         plt.ylabel('Y Position')
-        plt.xlim(0, SIMULATION_PARAMETERS['DOMAIN_SIZE'])
-        plt.ylim(0, SIMULATION_PARAMETERS['DOMAIN_SIZE'])
+        plt.xlim(0, self.simulation_settings.domain_size)
+        plt.ylim(0, self.simulation_settings.domain_size)
     
         plt.show()
