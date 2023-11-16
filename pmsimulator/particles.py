@@ -1,3 +1,6 @@
+from .grid import *
+from .simulator import *
+
 import numpy as np
 
 class Particles:

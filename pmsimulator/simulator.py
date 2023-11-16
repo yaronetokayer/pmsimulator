@@ -1,3 +1,6 @@
+from .particles import *
+from .grid import *
+
 SIMULATION_PARAMETERS = {
     'DOMAIN_SIZE': 1.0,
     'GRID_SIZE': 0.1,
