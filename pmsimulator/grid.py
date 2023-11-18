@@ -14,7 +14,7 @@ class Grid:
         self.grid_cells_x = int(simulation_settings.domain_size / simulation_settings.grid_size)
         self.grid_cells_y = int(simulation_settings.domain_size / simulation_settings.grid_size)
 
-        # Initialize the density field to zero
+        # Initialize the density field
         self.density_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
 
     def assign_density(self, particle_populations, method='tsc'):
@@ -22,12 +22,15 @@ class Grid:
         Assign a grid density based on the particles on the grid
 
         Inputs:
-        particle_populations - an instantiation of Particles, or a list of instantiations, representing the particles on the grid
+        particle_populations - an instantiation of Particles, or a list of instantiations, 
+                               representing the particles on the grid
         method - the density assignment method.  Default is TSC
 
         Returns:
         None
         '''
+        # Reset the density field
+        self.density_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
         
         if method not in self.DENSITY_METHODS:
             raise ValueError(f"Invalid density assignment method. Allowed methods: {', '.join(self.DENSITY_METHODS)}")
@@ -83,7 +86,7 @@ class Grid:
 
                 self.density_field[j_periodic, i_periodic] += mass * weight
 
-    def assign_density_cic(self, grid_x, grid_y, x, y, mass):
+    def assign_density_cic(self, x, y, mass):
         '''
         Cloud in Cell (CIC) scheme for applying density to grid cells
         '''
@@ -91,12 +94,38 @@ class Grid:
         # CIC density assignment logic
         # ... (implementation needed)
         
-    def assign_density_ngp(self, grid_x, grid_y, x, y, mass):
+    def assign_density_ngp(self, x, y, mass):
         '''
         Nearest Grid Point (NGP) scheme for applying density to grid cells
         '''
         # NGP density assignment logic
         # ... (implementation needed)
+
+    def compute_potential(self):
+        '''
+        Compute the gravitational potential field from the density field using FFT
+        We solve the 2D Poisson eq in Fourier space: -k^2 \\phi(k) = -2*\\pi G \\rho(k)
+        '''
+
+        # Perform FFT on the density field
+        density_fft = np.fft.fft2(self.density_field)
+
+        # Define wave numbers along x and y axes
+        kx = 2 * np.pi * np.fft.fftfreq(self.grid_cells_x, d=self.simulation_settings.grid_size)
+        ky = 2 * np.pi * np.fft.fftfreq(self.grid_cells_y, d=self.simulation_settings.grid_size)
+
+        # Create 2D arrays of wave numbers
+        kx, ky = np.meshgrid(kx, ky, indexing='ij')
+
+        # Avoid division by zero by adding a small constant to the denominators
+        epsilon = 1e-10
+        denominator = kx**2 + ky**2 + epsilon
+
+        # Solve Poisson equation in Fourier space
+        phi_fft = 2 * np.pi * density_fft / denominator
+
+        # Perform inverse FFT to obtain the potential in real space
+        self.potential_field = np.fft.ifft2(phi_fft).real  * (2 * np.pi)**2
 
     def plot_density_heatmap(self, particles=None, **kwargs):
         '''
@@ -119,7 +148,7 @@ class Grid:
             'origin': 'lower',
             'extent': [0, self.simulation_settings.domain_size, 0, self.simulation_settings.domain_size]
         }
-        heatmap = plt.imshow(self.denisty_field, **heatmap_kwargs)
+        heatmap = plt.imshow(self.density_field, **heatmap_kwargs)
     
         # Overlay particle positions if provided
         if particles is not None:

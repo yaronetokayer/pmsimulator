@@ -2,7 +2,7 @@ from pmsimulator.particles import *
 from pmsimulator.grid import *
 
 class SimulationSettings:
-    def __init__(self, domain_size=1.0, grid_size=0.01, dt=dt):
+    def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01H):
         self.domain_size = domain_size
         self.grid_size = grid_size
         self.dt = dt # Time resolution of the simulation
@@ -24,7 +24,7 @@ class PMSimulator:
         
         self.grid = Grid(self.simulation_settings) # Create the simulation grid
 
-    def create_particles(self, num_particles, self.simulation_settings, species_name=None):
+    def create_particles(self, num_particles, species_name=None):
         particles_instance = Particles(num_particles, self.simulation_settings)
         if species_name is None:
             # Assign generic attribute name if none is passed by user
