@@ -50,13 +50,10 @@ class Grid:
                                   particles.masses.data):
                 if method == 'tsc':
                     assign_density_tsc(self, x, y, mass)
-                    # self.assign_density_tsc(x, y, mass)
                 elif method == 'cic':
                     assign_density_cic(self, x, y, mass)
-                    # self.assign_density_cic(x, y, mass)
                 elif method == 'ngp':
                     assign_density_ngp(self, x, y, mass)
-                    # self.assign_density_ngp(x, y, mass)
 
     def compute_potential(self):
         '''
@@ -138,12 +135,12 @@ class Grid:
             if not isinstance(particles, list):
                 particles = [particles]
 
-            for i, particle_pop in enumerate(particles):
+            for particle_pop in particles:
                 scatter_kwargs = {
                     'marker': kwargs.get('marker', 'o'),
                     's': kwargs.get('s', 2),
                     'alpha': kwargs.get('alpha', 0.5),
-                    'label': f'Particles {i + 1}'
+                    'label': particle_pop.species_name
                 }
                 plt.scatter(
                     particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
@@ -201,12 +198,12 @@ class Grid:
             if not isinstance(particles, list):
                 particles = [particles]
 
-            for i, particle_pop in enumerate(particles):
+            for particle_pop in particles:
                 scatter_kwargs = {
                     'marker': kwargs.get('marker', 'o'),
                     's': kwargs.get('s', 2),
                     'alpha': kwargs.get('alpha', 0.5),
-                    'label': f'Particles {i + 1}'
+                    'label': particle_pop.species_name
                 }
                 plt.scatter(
                     particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs

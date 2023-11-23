@@ -5,11 +5,12 @@ from pmsimulator.particles.accel_schemes import *
 
 class Particles:
     
-    def __init__(self, num_particles, simulation_settings):
+    def __init__(self, num_particles, simulation_settings, species_name):
         
         if not isinstance(num_particles, int):
             raise TypeError("num_particles must be an integer.")
-            
+        
+        self.species_name = species_name
         self.num_particles = num_particles
         self.x_positions = ParticleArray(num_particles)
         self.y_positions = ParticleArray(num_particles)

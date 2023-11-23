@@ -17,12 +17,15 @@ class PMSimulator:
         self.simulation_settings = SimulationSettings(**kwargs)
 
         # Keep track of simulation properties
-        self.time_steps = 0 # Counter for how many time steps the simulator has evolved through
+        self.integration_time = 0.0 # Keeps track of how much time the simulator has evolved through
         self.n_species = 0 # The total number of particle species in the simulator
         self.particles_per_species = []
         self.species_list = []
         
         self.grid = Grid(self.simulation_settings) # Create the simulation grid
+
+    def reset_integration_time(self):
+        self.integration_time = 0.0
 
     def create_particles(self, num_particles, species_name=None):
         '''
@@ -33,10 +36,11 @@ class PMSimulator:
         num_particles - the number of particles for the species
         species_name - (optional) give the species a name for easy access of the simulator attribute 
         '''
-        particles_instance = Particles(num_particles, self.simulation_settings)
         if species_name is None:
             # Assign generic attribute name if none is passed by user
             species_name = f'particles_{len([attr for attr in self.__dict__ if "particles_" in attr])}'
+
+        particles_instance = Particles(num_particles, self.simulation_settings, species_name)
             
         setattr(self, species_name, particles_instance)
         
@@ -44,12 +48,63 @@ class PMSimulator:
         self.particles_per_species.append(num_particles)
         self.species_list.append(getattr(self, species_name))
 
-    def advance(self, steps=1, energy=False):
+    def plot_snapshot(self, **kwargs):
         '''
-        Advance the entire simulation by 'steps' time steps Option to include energy calculations - KE, PE, and total E for each particle species at each time step
+        Method to plot current particle positions
         '''
-        # TO BE FILLED IN
+        plt.figure(figsize=(8, 8))
 
-        # Calculate the density, potential, and force fields
-        # Update the particle velocities and positions
-        # Update the simulation time_steps attribute
+        for particle_pop in self.species_list:
+            scatter_kwargs = {
+                'marker': kwargs.get('marker', 'o'),
+                's': kwargs.get('s', 2),
+                'alpha': kwargs.get('alpha', 0.5),
+                'label': particle_pop.species_name
+            }
+            plt.scatter(
+                particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
+            )
+        plt.legend(loc='lower right')
+
+        # Cosmetics
+        plt.title('Snapshot t=' + str(self.integration_time))
+        plt.xlabel('X Position')
+        plt.ylabel('Y Position')
+        plt.xlim(0, self.simulation_settings.domain_size)
+        plt.ylim(0, self.simulation_settings.domain_size)
+    
+        plt.show()
+
+    def advance(self, int_time, density_method='tsc', accel_method='ngp', adaptive_time=False, energy=False):
+        '''
+        Advance the entire simulation by 'int_time' time.
+        Option to include energy calculations - KE, PE, and total E for each particle species at each time step
+        '''
+        time_elapsed = 0.0
+        counter = 0
+
+        while time_elapsed < int_time:
+            if adaptive_time:
+                # Find maximum velocity component
+                if counter == 0: # At first iteration, require a step size of at most dt
+                    max_v = self.simulation_settings.grid_size / self.simulation_settings.dt 
+                else:
+                    max_v = 1e-5 # Avoid division by zero
+                for particle_pop in self.species_list:
+                    max_v = max_v = np.max([
+                        np.max(np.abs(particle_pop.x_velocities.data)), 
+                        np.max(np.abs(particle_pop.y_velocities.data)), 
+                        max_v
+                        ])
+                dt = self.simulation_settings.grid_size / max_v
+            else:
+                dt = self.simulation_settings.dt 
+
+            self.grid.assign_density(self.species_list, method=density_method)
+            self.grid.compute_potential()
+            for particle_pop in self.species_list:
+                particle_pop.calculate_accels(self.grid, method=accel_method)
+                particle_pop.update(dt)
+            time_elapsed += dt
+            self.integration_time += dt
+            counter += 1

@@ -44,9 +44,27 @@ def assign_density_cic(self, x, y, mass):
     # CIC density assignment logic
     # ... (implementation needed)
     
-def assign_density_ngp(self, x, y, mass):
+def assign_density_ngp(grid, x, y, mass):
     '''
     Nearest Grid Point (NGP) scheme for applying density to grid cells
+
+    Inputs:
+    grid - grid object
+    x - array of x particle positions
+    y - array of y particle positions
+    mass - mass of each particle
+
+    Returns:
+    None
     '''
-    # NGP density assignment logic
-    # ... (implementation needed)
+
+    # Convert particle positions to grid indices
+    grid_x = int(x / grid.simulation_settings.grid_size)
+    grid_y = int(y / grid.simulation_settings.grid_size)
+
+    # Apply periodic boundary conditions to grid indices
+    grid_x = grid_x % grid.grid_cells_x
+    grid_y = grid_y % grid.grid_cells_y
+
+    # Assign the entire mass to the nearest grid point
+    grid.density_field[grid_y, grid_x] += mass
