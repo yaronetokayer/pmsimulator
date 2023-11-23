@@ -2,7 +2,7 @@ from pmsimulator.particles import *
 from pmsimulator.grid import *
 
 class SimulationSettings:
-    def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01H):
+    def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01):
         self.domain_size = domain_size
         self.grid_size = grid_size
         self.dt = dt # Time resolution of the simulation
