@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+import shutil
+import os
 
 from pmsimulator.particles.particles import *
 from pmsimulator.grid.grid import *
@@ -53,11 +55,11 @@ class PMSimulator:
         self.particles_per_species.append(num_particles)
         self.species_list.append(getattr(self, species_name))
 
-    def plot_snapshot(self, **kwargs):
+    def plot_snapshot(self, save_path=None, **kwargs):
         '''
         Method to plot current particle positions
         '''
-        plt.figure(figsize=(8, 8))
+        fig, ax = plt.subplots(1, 1, figsize=(8,8))
 
         for particle_pop in self.species_list:
             scatter_kwargs = {
@@ -66,22 +68,24 @@ class PMSimulator:
                 'alpha': kwargs.get('alpha', 0.5),
                 'label': particle_pop.species_name
             }
-            plt.scatter(
+            ax.scatter(
                 particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
             )
-        plt.legend(loc='lower right')
+        ax.legend(loc='lower right')
 
         # Cosmetics
-        plt.title(f't={self.integration_time:.4f}')
-        plt.xlabel('X Position')
-        plt.ylabel('Y Position')
-        plt.xlim(0, self.simulation_settings.domain_size)
-        plt.ylim(0, self.simulation_settings.domain_size)
-    
-        plt.show()
+        ax.set_title(f't={self.integration_time:.4f}')
+        ax.set_xlabel('X Position')
+        ax.set_ylabel('Y Position')
+        ax.set_xlim(0, self.simulation_settings.domain_size)
+        ax.set_ylim(0, self.simulation_settings.domain_size)
+
+        if save_path is not None:
+            fig.savefig(save_path, dpi=300)
+            plt.close('all')
 
     def advance_one(self, dt, density_method='tsc', accel_method='ngp'):
-       '''
+        '''
         Advance the entire simulation by a single time step
 
         Parameters:
@@ -97,7 +101,11 @@ class PMSimulator:
 
         self.integration_time += dt
 
-    def advance(self, int_time, density_method='tsc', accel_method='ngp', adaptive_time=False, energy=False):
+    def advance(
+        self, int_time, 
+        density_method='tsc', accel_method='ngp', adaptive_time=False, energy=False,
+        animate=False, save_path='file.mov', temp_path='./temp', framerate=24
+        ):
         '''
         Advance the entire simulation by 'int_time' time.
 
@@ -114,13 +122,16 @@ class PMSimulator:
         time_elapsed = 0.0
         counter = 0
 
+        if animate:# Draw initial condition
+            self.plot_snapshot(save_path=temp_path + '/' + str(counter)) 
+
         while time_elapsed < int_time:
             if adaptive_time:
                 dt = self.compute_adaptive_dt(first=not counter)
             else:
                 dt = self.simulation_settings.dt 
 
-            self.advance_one(self, dt, density_method=density_method, accel_method=accel_method)
+            self.advance_one(dt, density_method=density_method, accel_method=accel_method)
 
             time_elapsed += dt
             counter += 1
@@ -128,6 +139,21 @@ class PMSimulator:
             if energy:
                 '''TO BE FILLED IN'''
                 pass
+
+            if animate:# Draw next step
+                self.plot_snapshot(save_path=temp_path + '/' + str(counter)) 
+
+        if animate and os.path.isfile(save_path):
+            os.remove(save_path)
+        
+        if animate:
+            cmd = f"ffmpeg -y -r {framerate} -f image2 -s 1920x1080 -i {temp_path + '/'}%d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p {save_path}"
+            os.system(cmd)
+        
+            # Delete all contents of the directory
+            shutil.rmtree(temp_path + '/')
+            # Recreate the empty directory
+            os.mkdir(temp_path + '/')
 
     def compute_adaptive_dt(self, first=False):
         '''
