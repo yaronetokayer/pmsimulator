@@ -1,5 +1,5 @@
-from pmsimulator.particles import *
-from pmsimulator.grid import *
+from pmsimulator.particles.particles import *
+from pmsimulator.grid.grid import *
 
 class SimulationSettings:
     def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01):
@@ -25,6 +25,14 @@ class PMSimulator:
         self.grid = Grid(self.simulation_settings) # Create the simulation grid
 
     def create_particles(self, num_particles, species_name=None):
+        '''
+        Create a particle species with 'num_particles' particles
+        The species is made a simulator attribute, which is appended to species_list
+
+        Inputs:
+        num_particles - the number of particles for the species
+        species_name - (optional) give the species a name for easy access of the simulator attribute 
+        '''
         particles_instance = Particles(num_particles, self.simulation_settings)
         if species_name is None:
             # Assign generic attribute name if none is passed by user
@@ -35,3 +43,13 @@ class PMSimulator:
         self.n_species += 1
         self.particles_per_species.append(num_particles)
         self.species_list.append(getattr(self, species_name))
+
+    def advance(self, steps=1, energy=False):
+        '''
+        Advance the entire simulation by 'steps' time steps Option to include energy calculations - KE, PE, and total E for each particle species at each time step
+        '''
+        # TO BE FILLED IN
+
+        # Calculate the density, potential, and force fields
+        # Update the particle velocities and positions
+        # Update the simulation time_steps attribute
