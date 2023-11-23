@@ -67,7 +67,7 @@ class PMSimulator:
         plt.legend(loc='lower right')
 
         # Cosmetics
-        plt.title('Snapshot t=' + str(self.integration_time))
+        plt.title(f't={self.integration_time:.4f}')
         plt.xlabel('X Position')
         plt.ylabel('Y Position')
         plt.xlim(0, self.simulation_settings.domain_size)
@@ -85,18 +85,7 @@ class PMSimulator:
 
         while time_elapsed < int_time:
             if adaptive_time:
-                # Find maximum velocity component
-                if counter == 0: # At first iteration, require a step size of at most dt
-                    max_v = self.simulation_settings.grid_size / self.simulation_settings.dt 
-                else:
-                    max_v = 1e-5 # Avoid division by zero
-                for particle_pop in self.species_list:
-                    max_v = max_v = np.max([
-                        np.max(np.abs(particle_pop.x_velocities.data)), 
-                        np.max(np.abs(particle_pop.y_velocities.data)), 
-                        max_v
-                        ])
-                dt = self.simulation_settings.grid_size / max_v
+                dt = self.compute_adaptive_dt(first=not counter)
             else:
                 dt = self.simulation_settings.dt 
 
@@ -105,6 +94,28 @@ class PMSimulator:
             for particle_pop in self.species_list:
                 particle_pop.calculate_accels(self.grid, method=accel_method)
                 particle_pop.update(dt)
+            
             time_elapsed += dt
             self.integration_time += dt
             counter += 1
+
+    def compute_adaptive_dt(self, first=False):
+        '''
+        Compute adaptive time step for the simulation given the current configuration
+
+        Inputs:
+        first - Flag indicating if this is the first time step
+        '''
+        if first: # At first iteration, require a step size of at most dt
+            max_v = self.simulation_settings.grid_size / self.simulation_settings.dt 
+        else:
+            max_v = 1e-5 # Avoid division by zero
+
+        for particle_pop in self.species_list:
+            max_v = max_v = np.max([
+                np.max(np.abs(particle_pop.x_velocities.data)), 
+                np.max(np.abs(particle_pop.y_velocities.data)), 
+                max_v
+                ])
+
+        return self.simulation_settings.grid_size / max_v
