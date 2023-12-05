@@ -79,7 +79,7 @@ class Grid:
         denominator = kxkx**2 + kyky**2 + epsilon
 
         # Solve Poisson equation in Fourier space
-        phi_fft = -2 * np.pi * density_fft / denominator
+        phi_fft = -4 * np.pi * density_fft / denominator
 
         # # Compute the force field by taking the gradient in Fourier space
         # grad_x_fft = 1j * kxkx * phi_fft
