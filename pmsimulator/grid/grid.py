@@ -1,5 +1,5 @@
-from pmsimulator.particles.particles import *
-from pmsimulator.grid.density_schemes import *
+# from pmsimulator.particles.particles import *
+from pmsimulator.grid.density_schemes import DENSITY_METHODS, assign_density_tsc, assign_density_cic, assign_density_ngp
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,8 +45,8 @@ class Grid:
 
         # Assign density to each grid cell
         for particles in particle_populations:    
-            for x, y, mass in zip(particles.x_positions.data, 
-                                  particles.y_positions.data, 
+            for x, y, mass in zip(particles.positions.x.data, 
+                                  particles.positions.y.data, 
                                   particles.masses.data):
                 if method == 'tsc':
                     assign_density_tsc(self, x, y, mass)
@@ -143,7 +143,7 @@ class Grid:
                     'label': particle_pop.species_name
                 }
                 plt.scatter(
-                    particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
+                    particle_pop.positions.x.data, particle_pop.positions.y.data, **scatter_kwargs
                 )
             plt.legend()
     
@@ -206,7 +206,7 @@ class Grid:
                     'label': particle_pop.species_name
                 }
                 plt.scatter(
-                    particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
+                    particle_pop.positions.x.data, particle_pop.positions.y.data, **scatter_kwargs
                 )
             plt.legend(loc='lower right')
     

@@ -4,9 +4,9 @@ from matplotlib.animation import FuncAnimation
 import shutil
 import os
 
-from pmsimulator.particles.particles import *
-from pmsimulator.grid.grid import *
-from pmsimulator.simulator.animate import *
+from pmsimulator.particles.particles import Particles
+from pmsimulator.grid.grid import Grid
+# from pmsimulator.simulator.animate import *
 
 class SimulationSettings:
     def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01):
@@ -69,7 +69,7 @@ class PMSimulator:
                 'label': particle_pop.species_name
             }
             ax.scatter(
-                particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
+                particle_pop.positions[0].data, particle_pop.positions[1].data, **scatter_kwargs
             )
         ax.legend(loc='lower right')
 
@@ -169,10 +169,15 @@ class PMSimulator:
 
         for particle_pop in self.species_list:
             max_v = max_v = np.max([
-                np.max(np.abs(particle_pop.x_velocities.data)), 
-                np.max(np.abs(particle_pop.y_velocities.data)), 
+                np.max(np.abs(particle_pop.velocities[0].data)), 
+                np.max(np.abs(particle_pop.velocities[1].data)), 
                 max_v
                 ])
 
         return self.simulation_settings.grid_size / max_v
 
+    def export_snapshot(self):
+        '''
+        Function to export a current snapshot of the simulation as a Python dictionary.  Includes all particle positions and velocities.
+        '''
+        pass

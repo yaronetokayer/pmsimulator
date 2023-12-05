@@ -1,6 +1,6 @@
 import numpy as np
 
-from pmsimulator.particles.distributions import *
+from pmsimulator.particles.distributions import ALLOWED_DISTRIBUTIONS, initialize_uniform, initialize_normal, initialize_all_ones
 from pmsimulator.particles.accel_schemes import *
 
 class Particles:
@@ -12,13 +12,15 @@ class Particles:
         
         self.species_name = species_name
         self.num_particles = num_particles
-        self.x_positions = ParticleArray(num_particles)
-        self.y_positions = ParticleArray(num_particles)
-        self.x_velocities = ParticleArray(num_particles)
-        self.y_velocities = ParticleArray(num_particles)
+        self.positions = Vector(num_particles)
+        self.velocities = Vector(num_particles)
+        # self.x_positions = ParticleArray(num_particles)
+        # self.y_positions = ParticleArray(num_particles)
+        # self.x_velocities = ParticleArray(num_particles)
+        # self.y_velocities = ParticleArray(num_particles)
         self.masses = ParticleArray(num_particles)
 
-        self.accels = (ParticleArray(num_particles), ParticleArray(num_particles))
+        self.accels = Vector(num_particles)
 
         self.domain_size = simulation_settings.domain_size
 
@@ -26,14 +28,16 @@ class Particles:
         '''
         Apply periodic boundary conditions for position arrays
         '''
-        self.x_positions.data = self.x_positions.data % self.domain_size
-        self.y_positions.data = self.y_positions.data % self.domain_size
+        for comp in self.positions.comps:
+            comp = comp % self.domain_size
+        # self.positions.x.data = self.positions.x.data % self.domain_size
+        # self.positions.y.data = self.positions.y.data % self.domain_size
 
     def kinetic_energy(self):
         '''
         Calculate and return the kinetic energy of particle species in current state
         '''
-        v_squared = self.x_velocities.data**2 + self.y_velocities.data**2
+        v_squared = self.velocities[0].data**2 + self.velocities[1].data**2
 
         return 0.5 * np.sum( self.masses.data * v_squared )
 
@@ -45,8 +49,8 @@ class Particles:
         pe = np.zeros(self.num_particles)
 
         for i in range(self.num_particles):
-            x_particle = self.x_positions.data[i]
-            y_particle = self.y_positions.data[i]
+            x_particle = self.positions.x.data[i]
+            y_particle = self.positions.y.data[i]
             mass_particle = self.masses.data[i]
 
             # Find the corresponding grid cell for the particle
@@ -69,8 +73,8 @@ class Particles:
         accels_y = np.empty(self.num_particles)
 
         for i in range(self.num_particles):
-            x_particle = self.x_positions.data[i]
-            y_particle = self.y_positions.data[i]
+            x_particle = self.positions.x.data[i]
+            y_particle = self.positions.y.data[i]
 
             # Convert particle positions to grid indices
             grid_x = int(x_particle / grid.simulation_settings.grid_size)
@@ -80,7 +84,7 @@ class Particles:
             if method == 'ngp':
                 accels_x[i], accels_y[i] = calculate_accel_ngp(grid_x, grid_y, grid.force_field)
 
-        self.accels = accels_x, accels_y
+        self.accels[0].data, self.accels[1].data = accels_x, accels_y
 
     def update(self, time_step):
         '''
@@ -89,12 +93,34 @@ class Particles:
         Inputs:
         time_step - time step size
         '''
-        self.x_positions.data += self.x_velocities.data * time_step
-        self.y_positions.data += self.y_velocities.data * time_step
+        for pos, vel, accel in zip(self.positions.comps, self.velocities.comps, self.accels.comps):
+            pos.data += vel.data * time_step
+            vel.data += accel.data * time_step
+        # self.x_positions.data += self.x_velocities.data * time_step
+        # self.y_positions.data += self.y_velocities.data * time_step
         self.apply_periodic_bc()
 
-        self.x_velocities.data += self.accels[0] * time_step
-        self.y_velocities.data += self.accels[1] * time_step
+        # self.x_velocities.data += self.accels[0] * time_step
+        # self.y_velocities.data += self.accels[1] * time_step
+
+    def polar_coords(self):
+        '''
+        Export the particle positions and velocities in polar coordinates
+        '''
+        pass
+
+class Vector:
+    '''
+    Class for vector quantities: position, velocity, and acceleration
+    '''
+
+    def __init__(self, num_particles):
+        if not isinstance(num_particles, int):
+            raise TypeError("num_particles must be an integer.")
+
+        self.x = ParticleArray(num_particles)
+        self.y = ParticleArray(num_particles)
+        self.comps = (self.x, self.y)
 
 class ParticleArray:
         
