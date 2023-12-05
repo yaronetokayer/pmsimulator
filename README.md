@@ -38,6 +38,10 @@ The `pmsimulator.constants` class includes some numerical constants that may be 
 * `pmsimulator.constants.year = 5.849e50` (1 year $= 5.849\times10^{50} t_\mathrm{P}$)
 * `pmsimulator.constants.hub = 1.747e-61` (100 $\frac{\mathrm{km}}{\mathrm{Mpc}\ \mathrm{s}}= 1.747\times10^{-61} t_\mathrm{P}^{-1}$)
 
+## Coordinates
+
+The code operates in cartesian coordinates.  However, initial conditions for particles may be defined in polar coordinates.  Additionally, particle positions and velocities can be exported at anytime in polar coordinates in order to facilitate calculations of, e.g., the Toomre parameter.
+
 # Structure
 
 The primary class is the `Simulator` class found in `pmsimulator.simulator`.  An instantiation of this class will be an object that holds:
