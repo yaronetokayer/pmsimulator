@@ -1,6 +1,6 @@
 import numpy as np
 
-from pmsimulator.particles.distributions import ALLOWED_DISTRIBUTIONS, initialize_uniform, initialize_normal, initialize_all_ones
+from pmsimulator.particles.distributions import *
 from pmsimulator.particles.accel_schemes import *
 
 class Particles:
@@ -29,7 +29,7 @@ class Particles:
         Apply periodic boundary conditions for position arrays
         '''
         for comp in self.positions.comps:
-            comp = comp % self.domain_size
+            comp.data = comp.data % self.domain_size
         # self.positions.x.data = self.positions.x.data % self.domain_size
         # self.positions.y.data = self.positions.y.data % self.domain_size
 
@@ -84,7 +84,7 @@ class Particles:
             if method == 'ngp':
                 accels_x[i], accels_y[i] = calculate_accel_ngp(grid_x, grid_y, grid.force_field)
 
-        self.accels[0].data, self.accels[1].data = accels_x, accels_y
+        self.accels.x.data, self.accels.y.data = accels_x, accels_y
 
     def update(self, time_step):
         '''
