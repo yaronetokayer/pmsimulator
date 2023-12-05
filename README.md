@@ -41,8 +41,8 @@ The `pmsimulator.constants` class includes some numerical constants that may be 
 # Structure
 
 The primary class is the `Simulator` class found in `pmsimulator.simulator`.  An instantiation of this class will be an object that holds:
-* the `simulation_settings` attribute, which is an instantiation of `pmsimulator.simulator.SimulationSettings`.  This stores the global propertie of the simulation: `domain_size`, `grid_size`, and `dt`.  (Note that if adaptive time stepping is used, then `dt` is overridden).
-* the `grid` attribute, , which is an instantiation of `pmsimulator.grid.Grid`.  This is automatically generated upon calling `pmsimulator.simulator.Simulator` based on the the `simulation_settings` attributes.  There is only one `grid` where all particle species live.
+* the `simulation_settings` attribute, which is an instantiation of `pmsimulator.simulator.SimulationSettings`.  This stores the global properties of the simulation: `domain_size`, `grid_size`, and `dt`.  (Note that if adaptive time stepping is used, then `dt` is overridden).
+* the `grid` attribute, , which is an instantiation of `pmsimulator.grid.Grid`.  This is automatically generated upon calling `pmsimulator.simulator.Simulator` based on the the `simulation_settings` attributes.  The simulator has only one `grid` in which all particle species live.
 * any number of particle species, which are stored in the list `species_list`.  Each in an instantiation of the `pmsimulator.particles.Particles` class.  Upon construction, no particle species are part of the simuation.  The `create_particles` method can be called to add a particle species to the `species_list`.
 * a set of attributes to keep track of the simulation:
   - `integration_time`: The total integration time that the simulator has evolved through
