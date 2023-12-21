@@ -12,7 +12,7 @@
 #                 'label': particle_pop.species_name
 #             }
 #             ax.scatter(
-#                 particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
+#                 particle_pop.positions.x.data, particle_pop.positions.y.data, **scatter_kwargs
 #             )
 
 #     ax.set_title(f't={self.integration_time:.4f}')

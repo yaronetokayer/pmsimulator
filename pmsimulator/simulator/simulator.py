@@ -69,7 +69,7 @@ class PMSimulator:
                 'label': particle_pop.species_name
             }
             ax.scatter(
-                particle_pop.positions[0].data, particle_pop.positions[1].data, **scatter_kwargs
+                particle_pop.positions.x.data, particle_pop.positions.y.data, **scatter_kwargs
             )
         ax.legend(loc='lower right')
 
@@ -169,8 +169,8 @@ class PMSimulator:
 
         for particle_pop in self.species_list:
             max_v = max_v = np.max([
-                np.max(np.abs(particle_pop.velocities[0].data)), 
-                np.max(np.abs(particle_pop.velocities[1].data)), 
+                np.max(np.abs(particle_pop.velocities.x.data)), 
+                np.max(np.abs(particle_pop.velocities.y.data)), 
                 max_v
                 ])
 
