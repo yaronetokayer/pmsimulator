@@ -1,5 +1,12 @@
-from pmsimulator.particles.particles import *
-from pmsimulator.grid.grid import *
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import shutil
+import os
+
+from pmsimulator.particles.particles import Particles
+from pmsimulator.grid.grid import Grid
+# from pmsimulator.simulator.animate import *
 
 class SimulationSettings:
     def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01):
@@ -48,11 +55,11 @@ class PMSimulator:
         self.particles_per_species.append(num_particles)
         self.species_list.append(getattr(self, species_name))
 
-    def plot_snapshot(self, **kwargs):
+    def plot_snapshot(self, save_path=None, **kwargs):
         '''
         Method to plot current particle positions
         '''
-        plt.figure(figsize=(8, 8))
+        fig, ax = plt.subplots(1, 1, figsize=(8,8))
 
         for particle_pop in self.species_list:
             scatter_kwargs = {
@@ -61,27 +68,62 @@ class PMSimulator:
                 'alpha': kwargs.get('alpha', 0.5),
                 'label': particle_pop.species_name
             }
-            plt.scatter(
-                particle_pop.x_positions.data, particle_pop.y_positions.data, **scatter_kwargs
+            ax.scatter(
+                particle_pop.positions.x.data, particle_pop.positions.y.data, **scatter_kwargs
             )
-        plt.legend(loc='lower right')
+        ax.legend(loc='lower right')
 
         # Cosmetics
-        plt.title(f't={self.integration_time:.4f}')
-        plt.xlabel('X Position')
-        plt.ylabel('Y Position')
-        plt.xlim(0, self.simulation_settings.domain_size)
-        plt.ylim(0, self.simulation_settings.domain_size)
-    
-        plt.show()
+        ax.set_title(f't={self.integration_time:.4f}')
+        ax.set_xlabel('X Position')
+        ax.set_ylabel('Y Position')
+        ax.set_xlim(0, self.simulation_settings.domain_size)
+        ax.set_ylim(0, self.simulation_settings.domain_size)
 
-    def advance(self, int_time, density_method='tsc', accel_method='ngp', adaptive_time=False, energy=False):
+        if save_path is not None:
+            fig.savefig(save_path, dpi=300)
+            plt.close('all')
+
+    def advance_one(self, dt, density_method='tsc', accel_method='ngp'):
+        '''
+        Advance the entire simulation by a single time step
+
+        Parameters:
+        dt (float) - Time step length.
+        density_method (str) - Density assignment method.
+        accel_method (str) - Acceleration calculation method.
+        '''
+        self.grid.assign_density(self.species_list, method=density_method)
+        self.grid.compute_potential()
+        for particle_pop in self.species_list:
+            particle_pop.calculate_accels(self.grid, method=accel_method)
+            particle_pop.update(dt)
+
+        self.integration_time += dt
+
+    def advance(
+        self, int_time, 
+        density_method='tsc', accel_method='ngp', adaptive_time=False, energy=False,
+        animate=False, save_path='file.mov', temp_path='./temp', framerate=24
+        ):
         '''
         Advance the entire simulation by 'int_time' time.
-        Option to include energy calculations - KE, PE, and total E for each particle species at each time step
+
+        Parameters:
+        int_time (float) - Time to advance the simulation.
+        density_method (str) - Density assignment method.
+        accel_method (str) - Acceleration calculation method.
+        adaptive_time (bool) - If True, uses adaptive time steps.
+        energy (bool) - If True, includes energy calculations and returns lists of values.
+        animate (bool) - If True, creates an animation. Default is False.
+        save_path (str) - If provided, saves the animation to a file.
+        fps (int) - Frames per second for the animation. Default is 30.
         '''
         time_elapsed = 0.0
         counter = 0
+
+        if animate:# Draw initial condition
+            self.plot_snapshot(save_path=temp_path + '/' + str(counter)) 
 
         while time_elapsed < int_time:
             if adaptive_time:
@@ -89,15 +131,29 @@ class PMSimulator:
             else:
                 dt = self.simulation_settings.dt 
 
-            self.grid.assign_density(self.species_list, method=density_method)
-            self.grid.compute_potential()
-            for particle_pop in self.species_list:
-                particle_pop.calculate_accels(self.grid, method=accel_method)
-                particle_pop.update(dt)
-            
+            self.advance_one(dt, density_method=density_method, accel_method=accel_method)
+
             time_elapsed += dt
-            self.integration_time += dt
             counter += 1
+
+            if energy:
+                '''TO BE FILLED IN'''
+                pass
+
+            if animate:# Draw next step
+                self.plot_snapshot(save_path=temp_path + '/' + str(counter)) 
+
+        if animate and os.path.isfile(save_path):
+            os.remove(save_path)
+        
+        if animate:
+            cmd = f"ffmpeg -y -r {framerate} -f image2 -s 1920x1080 -i {temp_path + '/'}%d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p {save_path}"
+            os.system(cmd)
+        
+            # Delete all contents of the directory
+            shutil.rmtree(temp_path + '/')
+            # Recreate the empty directory
+            os.mkdir(temp_path + '/')
 
     def compute_adaptive_dt(self, first=False):
         '''
@@ -113,9 +169,15 @@ class PMSimulator:
 
         for particle_pop in self.species_list:
             max_v = max_v = np.max([
-                np.max(np.abs(particle_pop.x_velocities.data)), 
-                np.max(np.abs(particle_pop.y_velocities.data)), 
+                np.max(np.abs(particle_pop.velocities.x.data)), 
+                np.max(np.abs(particle_pop.velocities.y.data)), 
                 max_v
                 ])
 
         return self.simulation_settings.grid_size / max_v
+
+    def export_snapshot(self):
+        '''
+        Function to export a current snapshot of the simulation as a Python dictionary.  Includes all particle positions and velocities.
+        '''
+        pass
