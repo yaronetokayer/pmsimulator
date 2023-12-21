@@ -59,7 +59,7 @@ class Particles:
 
             pe += mass_particle * grid.potential_field[grid_y, grid_x]
 
-    def calculate_accels(self, grid, method='tsc'):
+    def calculate_accels(self, grid, method='ngp'):
         '''
         Calculate the acceleration of each particle given a force field from the grid object
 
@@ -67,7 +67,7 @@ class Particles:
         grid - A Grid object with a force field already calculated
         '''
         if method not in ACCEL_METHODS:
-            raise ValueError(f"Invalid force assignment method. Allowed methods: {', '.join(ACCEL_METHODS)}")
+            raise ValueError(f"Invalid acceleration assignment method. Allowed methods: {', '.join(ACCEL_METHODS)}")
 
         accels_x = np.empty(self.num_particles)
         accels_y = np.empty(self.num_particles)
@@ -83,6 +83,10 @@ class Particles:
             # Calculate the force from the gravitational potential in the grid cell
             if method == 'ngp':
                 accels_x[i], accels_y[i] = calculate_accel_ngp(grid_x, grid_y, grid.force_field)
+            elif method == 'cic':
+                pass
+            elif method == 'tsc':
+                pass
 
         self.accels.x.data, self.accels.y.data = accels_x, accels_y
 
@@ -121,48 +125,6 @@ class Vector:
         self.x = ParticleArray(num_particles)
         self.y = ParticleArray(num_particles)
         self.comps = (self.x, self.y)
-
-    def initialize_polar():
-        pass
-
-    def initialize(self, coords='cartesian', distribution='uniform', **kwargs):
-        '''
-        Method to initialize x and y components with the same distribution
-
-        Inputs:
-        coords - 'cartesian' or 'polar'.  Default is 'cartesian'.
-        distribution - distributions for each component of the vector quantity
-                       # if a single value, then the same distribution for both components
-                       # otherwise, a list of length two
-        Note that the kwargs should each be a tuple or list where the first 
-        '''
-        # Validation of distribution
-        if distribution not in ALLOWED_DISTRIBUTIONS:
-            raise ValueError(f"Invalid distribution type. Allowed distributions: {', '.join(ALLOWED_DISTRIBUTIONS)}")
-
-        # if not isinstance(distribution, list):
-        #     distribution = [distribution, distribution]
-        # if len(distribution) != 2:
-        #     raise TypeError("distribution must be either a single string or a list of length 2.")
-
-        # Validation of coords
-        if coords not in ['cartesian', 'polar']:
-            raise ValueError("Invalid coordinate type. Allowed coords: {'cartesian', 'polar'}.")
-
-        # Unpack kwargs into two components
-        kwargs1 = {}
-        kwargs2 = {}
-        for key, value in kwargs.items():
-            kwargs1[key] = value[0]
-            kwargs2[key] = value[1]
-
-        kwargs_list = [kwargs1, kwargs2]
-
-        if coords == 'cartesian':
-            for comp, comp_kwargs in zip(self.comps, kwargs_list):
-                comp.initialize(distribution=distribution, **comp_kwargs)
-        elif coords == 'polar':
-            v_r = 
 
 class ParticleArray:
         

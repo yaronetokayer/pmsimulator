@@ -1,12 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import shutil
 import os
 
 from pmsimulator.particles.particles import Particles
 from pmsimulator.grid.grid import Grid
-# from pmsimulator.simulator.animate import *
 
 class SimulationSettings:
     def __init__(self, domain_size=1.0, grid_size=0.01, dt=0.01):
@@ -104,7 +102,6 @@ class PMSimulator:
     def advance(
         self, int_time, 
         density_method='tsc', accel_method='ngp', adaptive_time=False, energy=False,
-        animate=False, save_path='file.mov', temp_path='./temp', framerate=24
         ):
         '''
         Advance the entire simulation by 'int_time' time.
@@ -115,15 +112,9 @@ class PMSimulator:
         accel_method (str) - Acceleration calculation method.
         adaptive_time (bool) - If True, uses adaptive time steps.
         energy (bool) - If True, includes energy calculations and returns lists of values.
-        animate (bool) - If True, creates an animation. Default is False.
-        save_path (str) - If provided, saves the animation to a file.
-        fps (int) - Frames per second for the animation. Default is 30.
         '''
         time_elapsed = 0.0
         counter = 0
-
-        if animate:# Draw initial condition
-            self.plot_snapshot(save_path=temp_path + '/' + str(counter)) 
 
         while time_elapsed < int_time:
             if adaptive_time:
@@ -139,21 +130,6 @@ class PMSimulator:
             if energy:
                 '''TO BE FILLED IN'''
                 pass
-
-            if animate:# Draw next step
-                self.plot_snapshot(save_path=temp_path + '/' + str(counter)) 
-
-        if animate and os.path.isfile(save_path):
-            os.remove(save_path)
-        
-        if animate:
-            cmd = f"ffmpeg -y -r {framerate} -f image2 -s 1920x1080 -i {temp_path + '/'}%d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p {save_path}"
-            os.system(cmd)
-        
-            # Delete all contents of the directory
-            shutil.rmtree(temp_path + '/')
-            # Recreate the empty directory
-            os.mkdir(temp_path + '/')
 
     def compute_adaptive_dt(self, first=False):
         '''
