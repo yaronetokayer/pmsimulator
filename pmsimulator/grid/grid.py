@@ -16,7 +16,7 @@ class Grid:
         # Initialize the fields
         self.density_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
         self.potential_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
-        self.force_field = (
+        self.accel_field = (
             np.zeros((self.grid_cells_x, self.grid_cells_y)), 
             np.zeros((self.grid_cells_x, self.grid_cells_y))
             )
@@ -33,15 +33,22 @@ class Grid:
         Returns:
         None
         '''
+
+        # Ensure particle_populations is a list
+        if not isinstance(particle_populations, list):
+            particle_populations = [particle_populations]
+
+        # Calculate mean density 
+        total_particles = 0
+        for particle_pop in particle_populations:
+            total_particles += particle_pop.num_particles
+        mean_density = total_particles / self.simulation_settings.domain_size**2
+
         # Reset the density field
         self.density_field = np.zeros((self.grid_cells_x, self.grid_cells_y))
         
         if method not in DENSITY_METHODS:
             raise ValueError(f"Invalid density assignment method. Allowed methods: {', '.join(DENSITY_METHODS)}")
-
-        # Ensure particle_populations is a list
-        if not isinstance(particle_populations, list):
-            particle_populations = [particle_populations]
 
         # Assign density to each grid cell
         for particles in particle_populations:    
@@ -55,13 +62,17 @@ class Grid:
                 elif method == 'ngp':
                     assign_density_ngp(self, x, y, mass)
 
+        # Scale by cell size and subtract off the mean
+        self.density_field /= (self.simulation_settings.grid_size**2 / self.simulation_settings.domain_size**2)
+        self.density_field -= mean_density
+
     def compute_potential(self):
         '''
         Compute the gravitational potential field from the density field using FFT
         We solve the 2D Poisson eq in Fourier space: -k^2 \\phi(k) = -2*\\pi G \\rho(k)
 
         The potential field is stored in self.potential_field
-        The negative gradient of the potential field is stored in self.force_field
+        The negative gradient of the potential field is stored in self.accel_field
         '''
 
         # Perform FFT on the density field
@@ -72,7 +83,7 @@ class Grid:
         ky = 2 * np.pi * np.fft.fftfreq(self.grid_cells_y, d=self.simulation_settings.grid_size)
 
         # Create 2D arrays of wave numbers
-        kxkx, kyky = np.meshgrid(kx, ky, indexing='ij')
+        kxkx, kyky = np.meshgrid(kx, ky, indexing='xy')
 
         # Avoid division by zero by adding a small constant to the denominators
         epsilon = 1e-10
@@ -81,16 +92,18 @@ class Grid:
         # Solve Poisson equation in Fourier space
         phi_fft = -4 * np.pi * density_fft / denominator
 
-        # # Compute the force field by taking the gradient in Fourier space
+        # Set the (0,0) element to 0 to properly normalize the density
+        phi_fft[0,0] = 0.0
+
+        # # Compute the acceleration field by taking the gradient in Fourier space
         # grad_x_fft = 1j * kxkx * phi_fft
         # grad_y_fft = 1j * kyky * phi_fft
 
         # Perform inverse FFT to obtain the potential in real space
         phi_real = np.fft.ifft2(phi_fft).real
-        phi_real += np.min(np.abs(phi_real)) # Rescale
         self.potential_field = phi_real
 
-        # Compute the gradient by taking the gradient
+        # Compute the gradient by taking the gradient in coordinate space
         # Create a ghost layer to account for periodic BCs in the gradient calculation
         potential_with_ghost = np.zeros((self.grid_cells_x + 2, self.grid_cells_y + 2))
         potential_with_ghost[1:-1, 1:-1] = self.potential_field
@@ -102,9 +115,9 @@ class Grid:
         grad_x = np.gradient(potential_with_ghost, axis=1) / dx
         grad_y = np.gradient(potential_with_ghost, axis=0) / dx
 
-        self.force_field = (-grad_x[1:-1, 1:-1], -grad_y[1:-1, 1:-1])
+        self.accel_field = (-grad_x[1:-1, 1:-1], -grad_y[1:-1, 1:-1])
 
-        # self.force_field = (-np.fft.ifft2(grad_x_fft).real, -np.fft.ifft2(grad_y_fft).real)
+        # self.accel_field = (-np.fft.ifft2(grad_x_fft).real, -np.fft.ifft2(grad_y_fft).real)
 
     def plot_density_heatmap(self, particles=None, **kwargs):
         '''
@@ -147,7 +160,7 @@ class Grid:
                 )
             plt.legend()
     
-        colorbar = plt.colorbar(heatmap, label='Density')
+        colorbar = plt.colorbar(heatmap, label='Density - Mean Density')
 
         # Cosmetics
         plt.title('Grid Density Heatmap')
@@ -187,7 +200,7 @@ class Grid:
             y = np.linspace(0, self.simulation_settings.domain_size, self.grid_cells_y)
             X, Y = np.meshgrid(x, y)
             plt.quiver(
-                X, Y, self.force_field[0], self.force_field[1],
+                X, Y, self.accel_field[0], self.accel_field[1],
                 headlength=3, headaxislength=3, 
                 scale=None, color='white', width=0.005
                 )

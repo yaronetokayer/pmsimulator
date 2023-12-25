@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import shutil
-import os
 
 from pmsimulator.particles.particles import Particles
 from pmsimulator.grid.grid import Grid
@@ -26,6 +24,11 @@ class PMSimulator:
         self.n_species = 0 # The total number of particle species in the simulator
         self.particles_per_species = []
         self.species_list = []
+
+        # Store energy calculations
+        self.potential_energy_array = None
+        self.kinetic_energy_array = None
+        self.time_array = None
         
         self.grid = Grid(self.simulation_settings) # Create the simulation grid
 
@@ -82,7 +85,7 @@ class PMSimulator:
             fig.savefig(save_path, dpi=300)
             plt.close('all')
 
-    def advance_one(self, dt, density_method='tsc', accel_method='ngp'):
+    def advance_one(self, dt=None, density_method='tsc', accel_method='ngp'):
         '''
         Advance the entire simulation by a single time step
 
@@ -91,6 +94,9 @@ class PMSimulator:
         density_method (str) - Density assignment method.
         accel_method (str) - Acceleration calculation method.
         '''
+        if dt is None:
+            dt = self.simulation_settings.dt
+            
         self.grid.assign_density(self.species_list, method=density_method)
         self.grid.compute_potential()
         for particle_pop in self.species_list:
@@ -114,22 +120,45 @@ class PMSimulator:
         energy (bool) - If True, includes energy calculations and returns lists of values.
         '''
         time_elapsed = 0.0
-        counter = 0
+        first = True
+
+        if energy:
+            time_array = [0.0]
+            potential_energy_array = []
+            kinetic_energy_array = []
+            potential_energy_array.append(0.0)
+            kinetic_energy_array.append(0.0)
+            for particle_pop in self.species_list:
+                particle_pop.calculate_potential_energy(self.grid)
+                particle_pop.calculate_kinetic_energy()
+                potential_energy_array[-1] += particle_pop.potential_energy
+                kinetic_energy_array[-1] += particle_pop.kinetic_energy
 
         while time_elapsed < int_time:
             if adaptive_time:
-                dt = self.compute_adaptive_dt(first=not counter)
+                dt = self.compute_adaptive_dt(first=first)
+                first = False
             else:
                 dt = self.simulation_settings.dt 
 
             self.advance_one(dt, density_method=density_method, accel_method=accel_method)
 
             time_elapsed += dt
-            counter += 1
 
             if energy:
-                '''TO BE FILLED IN'''
-                pass
+                potential_energy_array.append(0.0)
+                kinetic_energy_array.append(0.0)
+                time_array.append(self.integration_time)
+                for particle_pop in self.species_list:
+                    particle_pop.calculate_potential_energy(self.grid)
+                    particle_pop.calculate_kinetic_energy()
+                    potential_energy_array[-1] += particle_pop.potential_energy
+                    kinetic_energy_array[-1] += particle_pop.kinetic_energy
+
+        if energy:
+            self.potential_energy_array = np.array(potential_energy_array)
+            self.kinetic_energy_array = np.array(kinetic_energy_array)
+            self.time_array = np.array(time_array)
 
     def compute_adaptive_dt(self, first=False):
         '''

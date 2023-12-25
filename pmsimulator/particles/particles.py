@@ -19,8 +19,10 @@ class Particles:
         # self.x_velocities = ParticleArray(num_particles)
         # self.y_velocities = ParticleArray(num_particles)
         self.masses = ParticleArray(num_particles)
-
         self.accels = Vector(num_particles)
+
+        self.potential_energy = 0.0
+        self.kinetic_energy = 0.0
 
         self.domain_size = simulation_settings.domain_size
 
@@ -33,38 +35,54 @@ class Particles:
         # self.positions.x.data = self.positions.x.data % self.domain_size
         # self.positions.y.data = self.positions.y.data % self.domain_size
 
-    def kinetic_energy(self):
+    def calculate_kinetic_energy(self):
         '''
         Calculate and return the kinetic energy of particle species in current state
         '''
-        v_squared = self.velocities[0].data**2 + self.velocities[1].data**2
+        v_squared = self.velocities.x.data**2 + self.velocities.y.data**2
 
-        return 0.5 * np.sum( self.masses.data * v_squared )
+        self.kinetic_energy = 0.5 * np.sum( self.masses.data * v_squared )
 
-    def potential_energy(self, grid):
+    # def calculate_potential_energy(self, grid):
+    #     '''
+    #     Calculate and return the potential energy of particle species in current state
+    #     '''
+    #     potential_energies = np.zeros(self.num_particles)
+
+    #     for i in range(self.num_particles):
+    #         x_particle = self.positions.x.data[i]
+    #         y_particle = self.positions.y.data[i]
+    #         mass_particle = self.masses.data[i]
+
+    #         # Find the corresponding grid cell for the particle
+    #         grid_x = int(x_particle / grid.simulation_settings.grid_size)
+    #         grid_y = int(y_particle / grid.simulation_settings.grid_size)
+
+    #         potential_energies[i] += mass_particle * grid.potential_field[grid_y, grid_x]
+
+    #     self.potential_energy = np.sum(potential_energies)
+
+    def calculate_potential_energy(self, grid):
         '''
         Calculate and return the potential energy of particle species in current state
-        PROBLEM: THIS DOESN'T WORK WITH THE WAY WE RESCALE THE POTENTIAL FIELD AT EACH TIME STEP
+        Uses an NGP method for assigning grid cells
         '''
-        pe = np.zeros(self.num_particles)
+        # Calculate the corresponding grid cells for all particles
+        grid_x = (self.positions.x.data / grid.simulation_settings.grid_size).astype(int)
+        grid_y = (self.positions.y.data / grid.simulation_settings.grid_size).astype(int)
 
-        for i in range(self.num_particles):
-            x_particle = self.positions.x.data[i]
-            y_particle = self.positions.y.data[i]
-            mass_particle = self.masses.data[i]
+        # Use array indexing to directly access the potential field for all particles
+        potential_energies = self.masses.data * grid.potential_field[grid_y, grid_x]
 
-            # Find the corresponding grid cell for the particle
-            grid_x = int(x_particle / grid.simulation_settings.grid_size)
-            grid_y = int(y_particle / grid.simulation_settings.grid_size)
-
-            pe += mass_particle * grid.potential_field[grid_y, grid_x]
+        # Sum up the potential energies
+        self.potential_energy = np.sum(potential_energies)
 
     def calculate_accels(self, grid, method='ngp'):
         '''
-        Calculate the acceleration of each particle given a force field from the grid object
+        Calculate the acceleration of each particle given an acceleration field from the grid object
 
         Inputs:
-        grid - A Grid object with a force field already calculated
+        grid - A Grid object with an acceleration field already calculated
         '''
         if method not in ACCEL_METHODS:
             raise ValueError(f"Invalid acceleration assignment method. Allowed methods: {', '.join(ACCEL_METHODS)}")
@@ -80,9 +98,9 @@ class Particles:
             grid_x = int(x_particle / grid.simulation_settings.grid_size)
             grid_y = int(y_particle / grid.simulation_settings.grid_size)
 
-            # Calculate the force from the gravitational potential in the grid cell
+            # Calculate the acceleration from the gravitational potential in the grid cell
             if method == 'ngp':
-                accels_x[i], accels_y[i] = calculate_accel_ngp(grid_x, grid_y, grid.force_field)
+                accels_x[i], accels_y[i] = calculate_accel_ngp(grid_x, grid_y, grid.accel_field)
             elif method == 'cic':
                 pass
             elif method == 'tsc':
